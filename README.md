@@ -53,7 +53,7 @@
 
 2. 本方法无法获取到用户未购买的有声书，如果你想听某个有声书，请乖乖掏钱
 
-3. 此项目（PiliPalaX）是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。 在此致敬原作者：[yankeguo-deprecated/gcoredl](https://github.com/yankeguo-deprecated/gcoredl) 本仓库做了更激进的修改，感谢原作者的开源精神。
+3. 此项目是个人为了兴趣而开发, 仅用于学习和测试，请于下载后24小时内删除。 所用API皆从官方网站收集, 不提供任何破解内容。 在此致敬原作者：[yankeguo-deprecated/gcoredl](https://github.com/yankeguo-deprecated/gcoredl) 本仓库做了更激进的修改，感谢原作者的开源精神。
 
 ## Credits
 
