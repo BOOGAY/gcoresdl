@@ -17,6 +17,35 @@ import (
 	"time"
 )
 
+// 清理文件名
+func sanitizeFileName(name string) string {
+    // Windows文件系统不允许的字符映射
+    replaceMap := map[string]string{
+        "<":  "＜",
+        ">":  "＞",
+        ":":  "：",
+        "\"": "＂",
+        "/":  "／",
+        "\\": "＼",
+        "|":  "｜",
+        "?":  "？",
+        "*":  "＊",
+    }
+    
+    // 替换Windows不允许的字符
+    for old, new := range replaceMap {
+        // 如果被替换的字符前后有空格，一并去除
+        name = strings.ReplaceAll(name, " " + old + " ", new)
+        name = strings.ReplaceAll(name, " " + old, new)
+        name = strings.ReplaceAll(name, old + " ", new)
+        name = strings.ReplaceAll(name, old, new)
+    }
+    
+    // 移除首尾空格
+    name = strings.TrimSpace(name)
+    return name
+}
+
 func fileExists(filename string) (ok bool, err error) {
 	var fi os.FileInfo
 	if fi, err = os.Stat(filename); err != nil {
@@ -170,8 +199,8 @@ func main() {
 			}
 		}
 
-		err = errors.New("missing included:" + radioRel.Type + "#" + radioRel.ID)
-		return
+		log.Printf("Error: missing included:%s#%s, skipping...", radioRel.Type, radioRel.ID)
+		continue
 
 	found:
 		log.Println("Found Radio:", radio.Attributes.Title)
@@ -184,44 +213,48 @@ func main() {
 			}
 		}
 
-		err = errors.New("missing included:" + mediaRel.Type + "#" + mediaRel.ID)
-		return
+		log.Printf("Error: missing included:%s#%s, skipping...", mediaRel.Type, mediaRel.ID)
+		continue
 
 	found2:
 		log.Println("Found media:", media.Attributes.MediaType, media.Attributes.Author)
 
 		audioFile := filepath.Join(OutputDirectory, fmt.Sprintf(
 			"%s-%03d-%s%s",
-			res.Data.Attributes.Title,
+			sanitizeFileName(res.Data.Attributes.Title),
 			i+1,
-			radio.Attributes.Title,
+			sanitizeFileName(radio.Attributes.Title),
 			filepath.Ext(media.Attributes.Audio),
 		))
 
 		audioExisted := false
 
 		if audioExisted, err = fileExists(audioFile); err != nil {
-			return
+			log.Printf("Error checking file existence for %s: %v, skipping...", audioFile, err)
+			continue
 		}
 
 		if !audioExisted {
 			if media.Attributes.MediaType == "protected_audio" {
 				if _, err = protectedAudioClient.R().SetOutput(audioFile).Get(radio.ID); err != nil {
-					return
+					log.Printf("Error downloading protected audio %s: %v, skipping...", audioFile, err)
+					continue
 				}
 			} else if media.Attributes.MediaType == "audio" {
 				if _, err = freeAudioClient.R().SetOutput(audioFile).Get(media.Attributes.Audio); err != nil {
-					return
+					log.Printf("Error downloading free audio %s: %v, skipping...", audioFile, err)
+					continue
 				}
 			} else {
-				err = errors.New("unknown media type:" + media.Attributes.MediaType)
-				return
+				log.Printf("Error: unknown media type:%s, skipping...", media.Attributes.MediaType)
+				continue
 			}
 		}
 
 		var tag *id3v2.Tag
 		if tag, err = id3v2.Open(audioFile, id3v2.Options{Parse: false}); err != nil {
-			return
+			log.Printf("Error opening audio file for ID3 tags %s: %v, skipping...", audioFile, err)
+			continue
 		}
 
 		log.Println("Setting ID3 Info:", audioFile)
@@ -240,7 +273,9 @@ func main() {
 		})
 		tag.AddTextFrame("TRCK", tag.DefaultEncoding(), strconv.Itoa(i+1))
 		if err = tag.Save(); err != nil {
-			return
+			log.Printf("Error saving ID3 tags for %s: %v, skipping...", audioFile, err)
+			continue
 		}
 	}
+	err = nil // 确保主程序不会以错误状态退出
 }
